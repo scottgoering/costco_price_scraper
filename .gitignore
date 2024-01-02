@@ -5,3 +5,9 @@ config.ini
 *.sqlite
 *.db
 *.sqlite3
+
+# Ignore receipts folder and its contents
+/receipts/
+
+#ignore scraped data
+scraped_data.csv
