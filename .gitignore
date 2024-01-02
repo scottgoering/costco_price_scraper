@@ -1,0 +1,7 @@
+# login config file
+config.ini
+
+# SQLite database files
+*.sqlite
+*.db
+*.sqlite3
