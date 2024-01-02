@@ -1,0 +1,56 @@
+from flask import Flask, jsonify, request
+import sqlite3
+
+app = Flask(__name__)
+
+
+@app.route("/check_sale", methods=["POST"])
+def check_sale():
+    # Get the list of item IDs from the request
+    data = request.json
+    item_ids = data.get("item_ids", [])
+
+    # Connect to the database
+    conn = sqlite3.connect("scraped_prices.db")
+    cursor = conn.cursor()
+
+    # Query the database for sale information
+    cursor.execute(
+        """
+        SELECT item_id, item_name, savings, expiry_date, sale_price
+        FROM items
+        WHERE item_id IN ({})
+         AND strftime('%Y-%m-%d', expiry_date) >= strftime('%Y-%m-%d', 'now', 'localtime')
+        """.format(
+            ",".join(map(str, item_ids))
+        )
+    )
+
+    # Fetch the results
+    results = cursor.fetchall()
+
+    # Close the database connection
+    conn.close()
+
+    total_savings = 0
+    for row in results:
+        total_savings += row[2]
+
+    # Convert results to a list of dictionaries
+    sale_info = [
+        {
+            "item_id": row[0],
+            "item_name": row[1],
+            "savings": row[2],
+            "expiry_date": row[3],
+            "sale_price": row[4],
+        }
+        for row in results
+    ]
+    refund_info = {"total_savings": total_savings, "sale_info": sale_info}
+
+    return jsonify(refund_info)
+
+
+if __name__ == "__main__":
+    app.run(debug=True)
