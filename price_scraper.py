@@ -2,9 +2,10 @@
 import csv
 from datetime import datetime, timedelta, timezone
 import re
+import sqlite3
 import requests
 from bs4 import BeautifulSoup
-import sqlite3
+
 
 # TODO: use a proxy
 
@@ -80,7 +81,7 @@ def get_sales_post_urls():
     """
     base_url = "https://cocowest.ca"
 
-    post_urls_list = []
+    urls_list = []
     for page_number in range(1, 4):
         # construct the url for each page
         page_url = f"{base_url}/page/{page_number}/"
@@ -118,12 +119,12 @@ def get_sales_post_urls():
                         if post_date >= threshold_date_aware:
                             href = item.find("h3", class_="g1-gamma").a["href"]
                             print(f"Post within the last 30 days: {href}")
-                            post_urls_list.append(href)
+                            urls_list.append(href)
                 else:
                     print("No time element found for:", item)
         else:
             print(f"Failed to retrieve data. Status code: {response.status_code}")
-    return post_urls_list
+    return urls_list
 
 
 post_urls_list = get_sales_post_urls()
@@ -177,22 +178,22 @@ def scrape_items_from_posts(post_urls_list):
     Returns:
         list: A list of lists containing scraped data.
     """
-    scraped_data = []
+    data = []
     for url in post_urls_list:
-        scraped_data.extend(scrape_website(url))
-    print(len(scraped_data))
-    return scraped_data
+        data.extend(scrape_website(url))
+    print(len(data))
+    return data
 
 
-def upsert_items(cursor, scraped_data):
+def upsert_items(cursor, items):
     """
     Update and insert items into the database.
 
     Args:
         cursor: The SQLite database cursor.
-        scraped_data (list): A list of lists containing scraped data.
+        items (list): A list of lists containing item data.
     """
-    for item in scraped_data:
+    for item in items:
         item_id, item_name, savings, expiry_date, sale_price = item
 
         # Use INSERT OR REPLACE to perform upsert
