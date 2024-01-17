@@ -17,63 +17,57 @@ operations, and commits changes. Ensure to close the database connection after u
 """
 import sqlite3
 
+DB_FILE = "scraped_prices.db"
+
 
 def create_items_table():
     """
     Create the 'items' table in the database if it doesn't exist.
     """
-    conn = sqlite3.connect("scraped_prices.db")
-    cursor = conn.cursor()
-    cursor.execute(
+    with sqlite3.connect(DB_FILE) as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS items (
+                item_id INTEGER PRIMARY KEY,
+                item_name TEXT,
+                savings REAL,
+                expiry_date DATE,
+                sale_price REAL
+            )
         """
-        CREATE TABLE IF NOT EXISTS items (
-            item_id INTEGER PRIMARY KEY,
-            item_name TEXT,
-            savings REAL,
-            expiry_date DATE,
-            sale_price REAL
         )
-    """
-    )
-    conn.commit()
-    conn.close()
 
 
 def delete_expired_items():
     """
     Delete expired items from the 'items' table.
     """
-    conn = sqlite3.connect("scraped_prices.db")
-    cursor = conn.cursor()
-    cursor.execute(
+    with sqlite3.connect(DB_FILE) as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            DELETE FROM items
+            WHERE expiry_date < CURRENT_DATE;
         """
-        DELETE FROM items
-        WHERE expiry_date < CURRENT_DATE;
-    """
-    )
-    conn.commit()
-    conn.close()
+        )
 
 
 def upsert_items(items):
     """
-    Update and insert items into the database.
+    Update and insert items into the database using executemany().
 
     Args:
         items (list): A list of lists containing item data.
     """
-    conn = sqlite3.connect("scraped_prices.db")
-    cursor = conn.cursor()
-    for item in items:
-        item_id, item_name, savings, expiry_date, sale_price = item
+    with sqlite3.connect(DB_FILE) as conn:
+        cursor = conn.cursor()
 
-        # Use INSERT OR REPLACE to perform upsert
-        cursor.execute(
+        # Use executemany() for bulk inserts
+        cursor.executemany(
             """
             INSERT OR REPLACE INTO items (item_id, item_name, savings, expiry_date, sale_price)
             VALUES (?, ?, ?, ?, ?)
         """,
-            (item_id, item_name, savings, expiry_date, sale_price),
+            items,
         )
-    conn.commit()
-    conn.close()
