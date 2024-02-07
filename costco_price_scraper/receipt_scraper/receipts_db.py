@@ -25,18 +25,52 @@ import sqlite3
 DB_FILE = "scraped_prices.db"
 
 
+def create_receipt_items_table():
+    """
+    Create the 'receipt_items' table in the SQLite database.
+
+    The 'receipt_items' table has the following columns:
+    - id: Auto-incremented primary key
+    - item_id: Integer representing the item ID
+    - item_name: Text representing the item name
+    - amount: Real number representing the item amount
+    - unit: Integer representing the item unit
+    - on_sale: Boolean indicating whether the item is on sale
+    - receipt_date: Date of the receipt
+    - receipt_id: Text representing the receipt ID
+    - receipt_type: Text representing the receipt type
+    """
+    # Use the Connection as a Context Manager
+    with sqlite3.connect(DB_FILE) as conn:
+        # Create a cursor
+        cursor = conn.cursor()
+
+        # Don't use string formatting to build SQL queries
+        cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS receipt_items (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                item_id INT,
+                item_name TEXT,
+                amount REAL,
+                unit INT,
+                on_sale BOOLEAN,
+                receipt_date DATE,
+                receipt_id TEXT,
+                receipt_type TEXT
+            )
+        """
+        )
+
+
 def create_receipts_table():
     """
     Create the 'receipts' table in the SQLite database.
 
     The 'receipts' table has the following columns:
     - id: Auto-incremented primary key
-    - item_id: Integer representing the item ID
-    - item_name: Text representing the item name
-    - item_price: Real number representing the item price
-    - date: Date of the receipt
     - receipt_id: Text representing the receipt ID
-    - on_sale: Boolean indicating whether the item is on sale
+    - receipt_date: Date of the receipt
     - receipt_path: Text representing the path to the receipt
     """
     # Use the Connection as a Context Manager
@@ -49,15 +83,76 @@ def create_receipts_table():
             """
             CREATE TABLE IF NOT EXISTS receipts (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
-                item_id INT,
-                item_name TEXT,
-                item_price REAL,
-                date DATE,
                 receipt_id TEXT,
-                on_sale BOOLEAN,
+                receipt_date DATE,
                 receipt_path TEXT
             )
         """
+        )
+
+
+def upsert_receipt_items_data(all_receipt_items_list):
+    """
+    Upsert receipt items data into the 'receipt_items' table using executemany().
+
+    Args:
+        all_receipt_items_list (list): A list of dictionaries representing receipt items.
+    """
+    with sqlite3.connect(DB_FILE) as conn:
+        cursor = conn.cursor()
+
+        # Extract data into a list of tuples
+        # data_to_insert = [
+        #     (
+        #         receipt_item.get("item_id"),
+        #         receipt_item.get("item_name"),
+        #         receipt_item.get("amount"),
+        #         receipt_item.get("unit"),
+        #         receipt_item.get("on_sale"),
+        #         receipt_item.get("receipt_date"),
+        #         receipt_item.get("receipt_id"),
+        #         receipt_item.get("receipt_type"),
+        #     )
+        #     for receipt_item in all_receipt_items_list
+        # ]
+
+        # Use executemany() for bulk inserts
+        cursor.executemany(
+            """
+            INSERT OR REPLACE INTO receipt_items (item_id, item_name, amount, unit, on_sale, receipt_date, receipt_id, receipt_type)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        """,
+            all_receipt_items_list,
+        )
+
+
+def upsert_receipt_data(all_receipts_list):
+    """
+    Upsert receipt data into the 'receipts' table using executemany().
+
+    Args:
+        all_receipts_list (list): A list of dictionaries representing receipts.
+    """
+    with sqlite3.connect(DB_FILE) as conn:
+        cursor = conn.cursor()
+
+        # Extract data into a list of tuples
+        # data_to_insert = [
+        #     (
+        #         receipt.get("receipt_id"),
+        #         receipt.get("receipt_date"),
+        #         receipt.get("receipt_path"),
+        #     )
+        #     for receipt in all_receipts_list
+        # ]
+
+        # Use executemany() for bulk inserts
+        cursor.executemany(
+            """
+            INSERT OR REPLACE INTO receipts (receipt_id, receipt_date, receipt_path)
+            VALUES (?, ?, ?)
+        """,
+            all_receipts_list,
         )
 
 
@@ -87,43 +182,9 @@ def get_all_item_ids_not_on_sale():
     """
     with sqlite3.connect(DB_FILE) as conn:
         cursor = conn.cursor()
-        cursor.execute("SELECT DISTINCT item_id FROM receipts WHERE on_sale = 0")
+        cursor.execute("SELECT DISTINCT item_id FROM receipt_items WHERE on_sale = 0")
         result = cursor.fetchall()
 
     # Close connection outside the 'with' block
     item_ids = [row[0] for row in result]
     return item_ids
-
-
-def upsert_receipt_data(all_receipt_items_list):
-    """
-    Upsert receipt data into the 'receipts' table using executemany().
-
-    Args:
-        all_receipt_items_list (list): A list of dictionaries representing receipt items.
-    """
-    with sqlite3.connect(DB_FILE) as conn:
-        cursor = conn.cursor()
-
-        # Extract data into a list of tuples
-        data_to_insert = [
-            (
-                receipt_item.get("item_id"),
-                receipt_item.get("item_name"),
-                receipt_item.get("item_price"),
-                receipt_item.get("date"),
-                receipt_item.get("receipt_id"),
-                receipt_item.get("on_sale"),
-                receipt_item.get("receipt_path"),
-            )
-            for receipt_item in all_receipt_items_list
-        ]
-
-        # Use executemany() for bulk inserts
-        cursor.executemany(
-            """
-            INSERT OR REPLACE INTO receipts (item_id, item_name, item_price, date, receipt_id, on_sale, receipt_path)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
-        """,
-            data_to_insert,
-        )
