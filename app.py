@@ -4,11 +4,10 @@ import sqlite3
 app = Flask(__name__)
 
 
-@app.route("/check_sale", methods=["POST"])
+@app.route("/check_sale", methods=["GET"])
 def check_sale():
-    # Get the list of item IDs from the request
-    data = request.json
-    item_ids = data.get("item_ids", [])
+    # Get the list of item IDs from the query parameters
+    item_ids = request.args.getlist("items")
 
     # Connect to the database
     conn = sqlite3.connect("scraped_prices.db")
@@ -32,9 +31,7 @@ def check_sale():
     # Close the database connection
     conn.close()
 
-    total_savings = 0
-    for row in results:
-        total_savings += row[2]
+    total_savings = sum(row[2] for row in results)
 
     # Convert results to a list of dictionaries
     sale_info = [
