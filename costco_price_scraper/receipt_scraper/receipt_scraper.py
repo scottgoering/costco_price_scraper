@@ -442,7 +442,7 @@ def run_receipt_scraper_with_api():
 
         receipts_db.upsert_receipt_items_data(all_receipt_items_list)
 
-    all_items_list = receipts_db.get_all_item_ids_not_on_sale()
+    all_items_list = receipts_db.get_all_items_not_on_sale()
     return all_items_list
 
 

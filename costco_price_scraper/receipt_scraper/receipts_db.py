@@ -173,6 +173,44 @@ def get_all_receipt_ids():
     return receipt_ids
 
 
+def get_receipts_by_ids(receipt_ids):
+    """
+    Retrieve receipts from the 'receipts' table based on the provided receipt IDs.
+
+    Args:
+    - receipt_ids (list): List of receipt IDs to retrieve.
+
+    Returns:
+    - list: List of dictionaries representing the matching receipts.
+    """
+    with sqlite3.connect(DB_FILE) as conn:
+        cursor = conn.cursor()
+
+        cursor.execute(
+            """
+            SELECT * FROM receipts
+            WHERE receipt_id IN ({}) 
+            """.format(
+                ", ".join("?" for _ in receipt_ids)
+            ),
+            receipt_ids,
+        )
+
+        rows = cursor.fetchall()
+
+        receipts = []
+        for row in rows:
+            receipt = {
+                "id": row[0],
+                "receipt_id": row[1],
+                "receipt_date": row[2],
+                "receipt_path": row[3],
+            }
+            receipts.append(receipt)
+
+    return receipts
+
+
 def get_all_item_ids_not_on_sale():
     """
     Get all distinct item IDs that are not on sale from the 'receipts' table.
@@ -188,3 +226,19 @@ def get_all_item_ids_not_on_sale():
     # Close connection outside the 'with' block
     item_ids = [row[0] for row in result]
     return item_ids
+
+
+def get_all_items_not_on_sale():
+    """
+    Get all rows from the 'receipt_items' table where items are not on sale.
+
+    Returns:
+        list: A list of rows where items are not on sale.
+    """
+    with sqlite3.connect(DB_FILE) as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM receipt_items WHERE on_sale = 0")
+        result = cursor.fetchall()
+
+    # Close connection outside the 'with' block
+    return result
