@@ -102,19 +102,19 @@ def upsert_receipt_items_data(all_receipt_items_list):
         cursor = conn.cursor()
 
         # Extract data into a list of tuples
-        # data_to_insert = [
-        #     (
-        #         receipt_item.get("item_id"),
-        #         receipt_item.get("item_name"),
-        #         receipt_item.get("amount"),
-        #         receipt_item.get("unit"),
-        #         receipt_item.get("on_sale"),
-        #         receipt_item.get("receipt_date"),
-        #         receipt_item.get("receipt_id"),
-        #         receipt_item.get("receipt_type"),
-        #     )
-        #     for receipt_item in all_receipt_items_list
-        # ]
+        data_to_insert = [
+            (
+                receipt_item.get("item_id"),
+                receipt_item.get("item_name"),
+                receipt_item.get("amount"),
+                receipt_item.get("unit"),
+                receipt_item.get("on_sale"),
+                receipt_item.get("receipt_date"),
+                receipt_item.get("receipt_id"),
+                receipt_item.get("receipt_type"),
+            )
+            for receipt_item in all_receipt_items_list
+        ]
 
         # Use executemany() for bulk inserts
         cursor.executemany(
@@ -122,7 +122,7 @@ def upsert_receipt_items_data(all_receipt_items_list):
             INSERT OR REPLACE INTO receipt_items (item_id, item_name, amount, unit, on_sale, receipt_date, receipt_id, receipt_type)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         """,
-            all_receipt_items_list,
+            data_to_insert,
         )
 
 

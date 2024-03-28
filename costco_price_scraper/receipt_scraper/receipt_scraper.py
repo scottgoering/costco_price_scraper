@@ -4,7 +4,7 @@ Costco Price Scraper Module
 This module provides functions to scrape receipts and items from the Costco website,
 using Selenium, BeautifulSoup, and an API for enhanced data retrieval.
 
-Author: [Your Name]
+Author: Jacky
 """
 
 from datetime import datetime
@@ -27,7 +27,7 @@ from costco_price_scraper.receipt_scraper import receipt_api
 LOGON_URL = "https://www.costco.ca/LogonForm"
 
 
-def read_config():
+def read_login_config():
     """Reads credentials from the configuration file."""
     config = configparser.ConfigParser()
     config.read("config.ini")
@@ -38,7 +38,7 @@ def initialize_webdriver():
     """Initializes the Chrome webdriver with specified options."""
     options = uc.ChromeOptions()
     # Add any additional options here
-    return uc.Chrome(use_subprocess=False, options=options)
+    return uc.Chrome(use_subprocess=False, options=options, version_main=122)
 
 
 def load_login_page(driver):
@@ -252,7 +252,7 @@ def initialize_scraper():
     receipts_db.create_receipts_table()
     receipts_db.create_receipt_items_table()
 
-    username, password = read_config()
+    username, password = read_login_config()
     driver = initialize_webdriver()
     load_login_page(driver)
     client_id = get_client_id(driver)
@@ -310,17 +310,18 @@ def parse_receipt_json_data(json_data):
         unit = item.get("unit", "")
         amount = item.get("amount", "")
         on_sale = item_id in discount_id_set
-        item_tuple = (
-            item_id,
-            item_name,
-            amount,
-            unit,
-            on_sale,
-            receipt_date,
-            receipt_id,
-            receipt_type,
-        )
-        receipt_items.append(item_tuple)
+
+        item_dict = {
+            "item_id": item_id,
+            "item_name": item_name,
+            "amount": amount,
+            "unit": unit,
+            "on_sale": on_sale,
+            "receipt_date": receipt_date,
+            "receipt_id": receipt_id,
+            "receipt_type": receipt_type,
+        }
+        receipt_items.append(item_dict)
 
     return receipt_items
 
