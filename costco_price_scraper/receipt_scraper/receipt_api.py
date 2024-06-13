@@ -87,7 +87,7 @@ def calculate_recent_dates():
     ).day
     end_date = end_date.replace(day=days_in_month)
 
-    if end_date.month >= 6:
+    if end_date.month > 6:
         start_month = end_date.month - 6
         start_year = end_date.year
     else:
