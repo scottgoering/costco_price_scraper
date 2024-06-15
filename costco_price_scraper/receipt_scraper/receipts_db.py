@@ -39,6 +39,7 @@ def create_receipt_items_table():
     - receipt_date: Date of the receipt
     - receipt_id: Text representing the receipt ID
     - receipt_type: Text representing the receipt type
+    - username: Text representing the username
     """
     # Use the Connection as a Context Manager
     with sqlite3.connect(DB_FILE) as conn:
@@ -57,7 +58,8 @@ def create_receipt_items_table():
                 on_sale BOOLEAN,
                 receipt_date DATE,
                 receipt_id TEXT,
-                receipt_type TEXT
+                receipt_type TEXT,
+                username TEXT
             )
         """
         )
@@ -112,19 +114,18 @@ def upsert_receipt_items_data(all_receipt_items_list):
                 receipt_item.get("receipt_date"),
                 receipt_item.get("receipt_id"),
                 receipt_item.get("receipt_type"),
+                receipt_item.get("username")
             )
             for receipt_item in all_receipt_items_list
         ]
 
-        # Use executemany() for bulk inserts
         cursor.executemany(
             """
-            INSERT OR REPLACE INTO receipt_items (item_id, item_name, amount, unit, on_sale, receipt_date, receipt_id, receipt_type)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        """,
+            INSERT OR REPLACE INTO receipt_items (item_id, item_name, amount, unit, on_sale, receipt_date, receipt_id, receipt_type, username)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
             data_to_insert,
         )
-
 
 def upsert_receipt_data(all_receipts_list):
     """
@@ -238,6 +239,25 @@ def get_all_items_not_on_sale():
     with sqlite3.connect(DB_FILE) as conn:
         cursor = conn.cursor()
         cursor.execute("SELECT * FROM receipt_items WHERE on_sale = 0")
+        result = cursor.fetchall()
+
+    # Close connection outside the 'with' block
+    return result
+
+
+def get_all_user_items_not_on_sale(username):
+    """
+    Get all rows from the 'receipt_items' table where items are not on sale and filter by username.
+
+    Args:
+        username (str): The username to filter the items by.
+
+    Returns:
+        list: A list of rows where items are not on sale for the specified username.
+    """
+    with sqlite3.connect(DB_FILE) as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM receipt_items WHERE on_sale = 0 AND username = ?", (username,))
         result = cursor.fetchall()
 
     # Close connection outside the 'with' block
