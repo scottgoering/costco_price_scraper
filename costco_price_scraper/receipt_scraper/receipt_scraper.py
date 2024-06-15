@@ -33,6 +33,11 @@ def read_login_config():
     config.read("config.ini")
     return config["Credentials"]["USERNAME"], config["Credentials"]["PASSWORD"]
 
+def read_username_config():
+    """Reads credentials from the configuration file."""
+    config = configparser.ConfigParser()
+    config.read("config.ini")
+    return config["Credentials"]["USERNAME"]
 
 def initialize_webdriver():
     """Initializes the Chrome webdriver with specified options."""
@@ -277,7 +282,7 @@ def is_within_30_days(transaction_date_str):
     return date_difference.days <= 30
 
 
-def parse_receipt_json_data(json_data):
+def parse_receipt_json_data(json_data, username):
     """
     Parses receipt JSON data and extracts relevant information.
 
@@ -320,6 +325,7 @@ def parse_receipt_json_data(json_data):
             "receipt_date": receipt_date,
             "receipt_id": receipt_id,
             "receipt_type": receipt_type,
+            "username": username
         }
         receipt_items.append(item_dict)
 
@@ -416,13 +422,13 @@ def run_receipt_scraper_with_api():
                 print(
                     f"Transaction {transaction['transactionBarcode']} is NOT within 30 days."
                 )
-
+        username = read_username_config()
         for receipt_json in unprocessed_receipt_data:
-            all_receipt_items_list.extend(parse_receipt_json_data(receipt_json))
+            all_receipt_items_list.extend(parse_receipt_json_data(receipt_json, username))
 
         receipts_db.upsert_receipt_items_data(all_receipt_items_list)
 
-    all_items_list = receipts_db.get_all_items_not_on_sale()
+    all_items_list = receipts_db.get_all_user_items_not_on_sale(username)
     return all_items_list
 
 

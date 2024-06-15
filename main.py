@@ -165,7 +165,7 @@ if __name__ == "__main__":
 
         # attachment_path = 'path/to/your/photo.jpg'  # Replace with the path to your photo
 
-    # email_sender.send_email(subject, body, to_email, paths)
+    email_sender.send_email(subject, body, to_email, paths)
 
     # try:
     #     subprocess.Popen(["start", "", os.path.normpath(path)], shell=True)
