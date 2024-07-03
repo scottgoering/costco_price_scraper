@@ -1,29 +1,17 @@
 import smtplib
-import configparser
 import os
 
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.mime.image import MIMEImage
-
-
-config_path = '/home/jacky/Code/costco_price_scraper/config.ini'
-
-def read_email_config():
-    """Reads sender email config from the configuration file."""
-    config = configparser.ConfigParser()
-    config.read(config_path)
-    return (
-        config["Credentials"]["GMAIL_USERNAME"],
-        config["Credentials"]["GMAIL_PASSWORD"],
-    )
+from costco_price_scraper.utils import config
 
 
 def send_email(subject, body, to_email, attachment_paths=None):
     # Email configuration
     smtp_server = "smtp.gmail.com"
     smtp_port = 465
-    sender_email, sender_password = read_email_config()
+    sender_email, sender_password = config.read_sender_email_config()
 
     # Create MIME object
     msg = MIMEMultipart()
