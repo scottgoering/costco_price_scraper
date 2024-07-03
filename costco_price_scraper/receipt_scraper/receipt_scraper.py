@@ -13,6 +13,7 @@ import re
 import time
 import configparser
 import threading
+import logging
 
 from bs4 import BeautifulSoup
 from selenium.webdriver.common.by import By
@@ -26,24 +27,57 @@ from costco_price_scraper.receipt_scraper import receipt_api
 
 LOGON_URL = "https://www.costco.ca/LogonForm"
 
+# Set up logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+config_path = '/home/jacky/Code/costco_price_scraper/config.ini'
+
+def kill_existing_chrome():
+    os.system("pkill -f chrome")
+    os.system("pkill -f chromedriver")
 
 def read_login_config():
     """Reads credentials from the configuration file."""
     config = configparser.ConfigParser()
-    config.read("config.ini")
+    config.read(config_path)
     return config["Credentials"]["USERNAME"], config["Credentials"]["PASSWORD"]
 
 def read_username_config():
     """Reads credentials from the configuration file."""
     config = configparser.ConfigParser()
-    config.read("config.ini")
+    config.read(config_path)
     return config["Credentials"]["USERNAME"]
 
-def initialize_webdriver():
+def initialize_webdriver(retries=3):
     """Initializes the Chrome webdriver with specified options."""
-    options = uc.ChromeOptions()
+    
+
     # Add any additional options here
-    return uc.Chrome(use_subprocess=False, options=options, version_main=122)
+    
+    attempt = 0
+    while attempt < retries:
+        try:
+            kill_existing_chrome()
+            time.sleep(3)
+            options = uc.ChromeOptions()
+            options.add_argument("--incognito")
+            options.add_argument("--disable-gpu")
+            options.add_argument("--no-sandbox")
+            options.add_argument('--disable-dev-shm-usage')
+            options.add_argument("--disable-setuid-sandbox")
+            time.sleep(5)
+            driver = uc.Chrome(use_subprocess=False, options=options, version_main=122)
+            # driver = uc.Chrome(version_main=122)
+            time.sleep(5)
+            return driver
+        except Exception as e:
+            attempt += 1
+            logger.error(f"Attempt {attempt} failed: {e}")
+            if attempt < retries:
+                time.sleep(5)  # Wait a bit before retrying
+            else:
+                raise
 
 
 def load_login_page(driver):
@@ -373,6 +407,7 @@ def get_screenshots(driver, all_receipt_ids_set):
         scroll_script = "window.scrollBy(0, 200);"
         driver.execute_script(scroll_script)
 
+    driver.close()
     driver.quit()
     receipts_db.upsert_receipt_data(new_receipts)
 
@@ -389,11 +424,13 @@ def run_receipt_scraper_with_api():
     recent_receipts_response = receipt_api.get_recent_receipts(id_token, client_id)
     all_receipt_ids_set = set(receipts_db.get_all_receipt_ids())
 
-    # Use threading to run get_screenshots without blocking
-    screenshot_thread = threading.Thread(
-        target=get_screenshots, args=(driver, all_receipt_ids_set)
-    )
-    screenshot_thread.start()
+    # # Use threading to run get_screenshots without blocking
+    # screenshot_thread = threading.Thread(
+    #     target=get_screenshots, args=(driver, all_receipt_ids_set)
+    # )
+    # screenshot_thread.start()
+
+    get_screenshots(driver, all_receipt_ids_set)
 
     if recent_receipts_response.status_code == 200:
         parsed_data = receipt_api.parse_transaction_data(
