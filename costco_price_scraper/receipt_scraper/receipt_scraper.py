@@ -11,7 +11,6 @@ from datetime import datetime
 import os
 import re
 import time
-import configparser
 import threading
 import logging
 
@@ -22,6 +21,7 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.action_chains import ActionChains
 import undetected_chromedriver as uc
 
+from costco_price_scraper.utils import config
 from costco_price_scraper.receipt_scraper import receipts_db
 from costco_price_scraper.receipt_scraper import receipt_api
 
@@ -31,51 +31,38 @@ LOGON_URL = "https://www.costco.ca/LogonForm"
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-config_path = '/home/jacky/Code/costco_price_scraper/config.ini'
-
 def kill_existing_chrome():
     os.system("pkill -f chrome")
     os.system("pkill -f chromedriver")
 
-def read_login_config():
-    """Reads credentials from the configuration file."""
-    config = configparser.ConfigParser()
-    config.read(config_path)
-    return config["Credentials"]["USERNAME"], config["Credentials"]["PASSWORD"]
+def is_chrome_path_valid(chrome_path):
+    """Check if the Chrome path is valid and accessible."""
+    return os.path.isfile(chrome_path) and os.access(chrome_path, os.X_OK)    
 
-def read_username_config():
-    """Reads credentials from the configuration file."""
-    config = configparser.ConfigParser()
-    config.read(config_path)
-    return config["Credentials"]["USERNAME"]
+def get_chrome_path():
+    """Retrieve Chrome path from environment variables or use a default."""
+    chrome_path = os.getenv('CHROME_PATH', '/usr/bin/google-chrome')
+    if not is_chrome_path_valid(chrome_path):
+        raise ValueError(f"The Chrome path {chrome_path} is invalid or not accessible.")
+    return chrome_path
 
 def initialize_webdriver(retries=3):
     """Initializes the Chrome webdriver with specified options."""
-    
 
-    # Add any additional options here
-    
+    chrome_path = get_chrome_path()
     attempt = 0
     while attempt < retries:
         try:
             kill_existing_chrome()
-            time.sleep(3)
             options = uc.ChromeOptions()
-            options.add_argument("--incognito")
-            options.add_argument("--disable-gpu")
-            options.add_argument("--no-sandbox")
-            options.add_argument('--disable-dev-shm-usage')
-            options.add_argument("--disable-setuid-sandbox")
-            time.sleep(5)
-            driver = uc.Chrome(use_subprocess=False, options=options, version_main=122)
-            # driver = uc.Chrome(version_main=122)
-            time.sleep(5)
+            options.binary_location = chrome_path
+            driver = uc.Chrome(options=options, version_main=122)
             return driver
         except Exception as e:
             attempt += 1
             logger.error(f"Attempt {attempt} failed: {e}")
             if attempt < retries:
-                time.sleep(5)  # Wait a bit before retrying
+                time.sleep(5)
             else:
                 raise
 
@@ -291,7 +278,7 @@ def initialize_scraper():
     receipts_db.create_receipts_table()
     receipts_db.create_receipt_items_table()
 
-    username, password = read_login_config()
+    username, password = config.read_login_config()
     driver = initialize_webdriver()
     load_login_page(driver)
     client_id = get_client_id(driver)
@@ -459,7 +446,7 @@ def run_receipt_scraper_with_api():
                 print(
                     f"Transaction {transaction['transactionBarcode']} is NOT within 30 days."
                 )
-        username = read_username_config()
+        username = config.read_username_config()
         for receipt_json in unprocessed_receipt_data:
             all_receipt_items_list.extend(parse_receipt_json_data(receipt_json, username))
 
