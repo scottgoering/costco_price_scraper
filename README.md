@@ -5,7 +5,7 @@ This project automates the process of checking for price adjustments on your rec
 ## Features
 
 - **Automated Price Checks**: Automatically compares your recent purchases against current Costco sale prices.
-- **Web Scraping**: Periodically scrapes Costco’s website to gather sale info using Selenium.
+- **Web Scraping**: Uses Selenium to scrape sale and receipt information and stores it in a SQLite database.
 - **Email Alerts**: Sends you an email notification when a price adjustment is found, including the details on how to get a refund.
 - **API Access**: Exposes sale information via an API to avoid unnecessary scraping.
 - **Task Scheduling**: Uses Cron to run the scraper and notify you on a regular basis.
