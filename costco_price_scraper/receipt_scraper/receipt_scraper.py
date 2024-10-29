@@ -25,7 +25,7 @@ from costco_price_scraper.utils import config
 from costco_price_scraper.receipt_scraper import receipts_db
 from costco_price_scraper.receipt_scraper import receipt_api
 
-LOGON_URL = "https://www.costco.ca/LogonForm"
+LOGON_URL = "https://www.costco.com/LogonForm" # Done: Change to USA
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -41,7 +41,7 @@ def is_chrome_path_valid(chrome_path):
 
 def get_chrome_path():
     """Retrieve Chrome path from environment variables or use a default."""
-    chrome_path = os.getenv('CHROME_PATH', '/usr/bin/google-chrome')
+    chrome_path = os.getenv('CHROME_PATH', '/Users/scott/PycharmProjects/costco_price_scraper/chromedriver')
     if not is_chrome_path_valid(chrome_path):
         raise ValueError(f"The Chrome path {chrome_path} is invalid or not accessible.")
     return chrome_path
@@ -55,8 +55,9 @@ def initialize_webdriver(retries=3):
         try:
             kill_existing_chrome()
             options = uc.ChromeOptions()
-            options.binary_location = chrome_path
-            driver = uc.Chrome(options=options, version_main=122)
+            # options.binary_location = chrome_path
+            # driver = uc.Chrome(options=options, version_main=122)
+            driver = uc.Chrome()
             return driver
         except Exception as e:
             attempt += 1
@@ -155,7 +156,7 @@ def navigate_to_warehouse_orders(driver, client_id):
     - driver: WebDriver instance
     - client_id: The client ID
     """
-    order_url = f"https://www.costco.ca/myaccount/#/app/{client_id}/ordersandpurchases"
+    order_url = f"https://www.costco.com/myaccount/#/app/{client_id}/ordersandpurchases"
     driver.get(order_url)
     WebDriverWait(driver, 20).until(
         EC.element_to_be_clickable(
@@ -218,8 +219,9 @@ def process_receipt_metadata(driver, all_receipt_ids_set):
     """
     receipt_element = driver.find_element(By.ID, "dataToPrint")
     receipt_html = receipt_element.get_attribute("outerHTML")
-    soup = BeautifulSoup(receipt_html, "html.parser")
+    soup = BeautifulSoup(receipt_html, "html5lib")
 
+    # Gas - div, class="MuiTypography-root MuiTypography-bodyCopy css-1p8uhpw"
     receipt_id = soup.find_all("div", class_="MuiBox-root css-11s8ayx")
     if receipt_id:
         receipt_id = receipt_id[-1].get_text(strip=True)
@@ -228,7 +230,12 @@ def process_receipt_metadata(driver, all_receipt_ids_set):
             print(f"Receipt {receipt_id} is already processed. Skipping...")
             return None, None, None  # Skip processing further
     date_str = soup.find("span", class_="date MuiBox-root css-ke5oan")
+    # Might be a gas receipt
+    if date_str is None:
+        date_str = soup.find("div", class_="MuiTypography-root MuiTypography-bodyCopy justifySEnd css-1ptz9tg")
     time_str = soup.find("span", class_="time MuiBox-root css-5c53yh")
+    if time_str is None:
+        time_str = soup.find("div", class_="MuiTypography-root MuiTypography-bodyCopy justifySEnd css-1ptz9tg")
     if date_str is not None and time_str is not None:
         date_str = date_str.get_text(strip=True)
         time_str = time_str.get_text(strip=True)
@@ -364,7 +371,7 @@ def get_screenshots(driver, all_receipt_ids_set):
     new_receipts = []
 
     view_receipt_buttons = driver.find_elements(
-        By.CSS_SELECTOR, 'button[automation-id="ViewInWareHouseReciept"]'
+        By.CSS_SELECTOR, 'button[automation-id="ViewInWareHouseReciept"][data-bi-tc^="ui:In"]'
     )
 
     for index, button in enumerate(view_receipt_buttons, start=1):

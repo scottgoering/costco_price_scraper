@@ -21,6 +21,7 @@ operations, and commits changes. Context manager closes the database connection 
 """
 
 import sqlite3
+from costco_price_scraper.utils.db_utils import date_parse
 
 DB_FILE = "scraped_prices.db"
 
@@ -101,6 +102,7 @@ def upsert_receipt_items_data(all_receipt_items_list):
         all_receipt_items_list (list): A list of dictionaries representing receipt items.
     """
     with sqlite3.connect(DB_FILE) as conn:
+        conn.create_function("date_parse", 1, date_parse)
         cursor = conn.cursor()
 
         # Extract data into a list of tuples
@@ -122,7 +124,7 @@ def upsert_receipt_items_data(all_receipt_items_list):
         cursor.executemany(
             """
             INSERT OR REPLACE INTO receipt_items (item_id, item_name, amount, unit, on_sale, receipt_date, receipt_id, receipt_type, username)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, date_parse(?), ?, ?, ?)
             """,
             data_to_insert,
         )
@@ -135,6 +137,7 @@ def upsert_receipt_data(all_receipts_list):
         all_receipts_list (list): A list of dictionaries representing receipts.
     """
     with sqlite3.connect(DB_FILE) as conn:
+        conn.create_function("date_parse", 1, date_parse)
         cursor = conn.cursor()
 
         # Extract data into a list of tuples
@@ -151,7 +154,7 @@ def upsert_receipt_data(all_receipts_list):
         cursor.executemany(
             """
             INSERT OR REPLACE INTO receipts (receipt_id, receipt_date, receipt_path)
-            VALUES (?, ?, ?)
+            VALUES (?, date_parse(?), ?)
         """,
             all_receipts_list,
         )
@@ -165,6 +168,7 @@ def get_all_receipt_ids():
         list: A list of distinct receipt IDs.
     """
     with sqlite3.connect(DB_FILE) as conn:
+        conn.create_function("date_parse", 1, date_parse)
         cursor = conn.cursor()
         cursor.execute("SELECT DISTINCT receipt_id FROM receipts")
         result = cursor.fetchall()
@@ -185,6 +189,7 @@ def get_receipts_by_ids(receipt_ids):
     - list: List of dictionaries representing the matching receipts.
     """
     with sqlite3.connect(DB_FILE) as conn:
+        conn.create_function("date_parse", 1, date_parse)
         cursor = conn.cursor()
 
         cursor.execute(
@@ -220,6 +225,7 @@ def get_all_item_ids_not_on_sale():
         list: A list of distinct item IDs not on sale.
     """
     with sqlite3.connect(DB_FILE) as conn:
+        conn.create_function("date_parse", 1, date_parse)
         cursor = conn.cursor()
         cursor.execute("SELECT DISTINCT item_id FROM receipt_items WHERE on_sale = 0")
         result = cursor.fetchall()
@@ -237,6 +243,7 @@ def get_all_items_not_on_sale():
         list: A list of rows where items are not on sale.
     """
     with sqlite3.connect(DB_FILE) as conn:
+        conn.create_function("date_parse", 1, date_parse)
         cursor = conn.cursor()
         cursor.execute("SELECT * FROM receipt_items WHERE on_sale = 0")
         result = cursor.fetchall()
@@ -256,6 +263,7 @@ def get_all_user_items_not_on_sale(username):
         list: A list of rows where items are not on sale for the specified username.
     """
     with sqlite3.connect(DB_FILE) as conn:
+        conn.create_function("date_parse", 1, date_parse)
         cursor = conn.cursor()
         cursor.execute("SELECT * FROM receipt_items WHERE on_sale = 0 AND username = ?", (username,))
         result = cursor.fetchall()

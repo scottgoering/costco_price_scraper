@@ -16,6 +16,7 @@ Note: Each function establishes a connection to the database, performs the neces
 operations, and commits changes. Ensure to close the database connection after usage.
 """
 import sqlite3
+from costco_price_scraper.utils.db_utils import date_parse
 
 DB_FILE = "scraped_prices.db"
 
@@ -25,6 +26,7 @@ def create_items_table():
     Create the 'items' table in the database if it doesn't exist.
     """
     with sqlite3.connect(DB_FILE) as conn:
+        conn.create_function("date_parse", 1, date_parse)
         cursor = conn.cursor()
         cursor.execute(
             """
@@ -43,14 +45,16 @@ def delete_expired_items():
     """
     Delete expired items from the 'items' table.
     """
-    with sqlite3.connect(DB_FILE) as conn:
-        cursor = conn.cursor()
-        cursor.execute(
-            """
-            DELETE FROM items
-            WHERE expiry_date < CURRENT_DATE;
-        """
-        )
+    #with sqlite3.connect(DB_FILE) as conn:
+    #    conn.create_function("date_parse", 1, date_parse)
+    #    cursor = conn.cursor()
+    #    cursor.execute(
+    #        """
+    #        DELETE FROM items
+    #        WHERE expiry_date < CURRENT_DATE;
+    #    """
+    #    )
+    pass
 
 
 def upsert_items(items):
@@ -61,13 +65,14 @@ def upsert_items(items):
         items (list): A list of lists containing item data.
     """
     with sqlite3.connect(DB_FILE) as conn:
+        conn.create_function("date_parse", 1, date_parse)
         cursor = conn.cursor()
 
         # Use executemany() for bulk inserts
         cursor.executemany(
             """
             INSERT OR REPLACE INTO items (item_id, item_name, savings, expiry_date, sale_price)
-            VALUES (?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, date_parse(?), ?)
         """,
             items,
         )

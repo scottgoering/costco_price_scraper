@@ -40,6 +40,8 @@ def get_recent_receipts(id_token, client_id):
         "variables": {
             "startDate": start_date_str,
             "endDate": end_date_str,
+            "documentType": "warehouse",
+            "documentSubType": "all",
             "text": "Last 6 Months",
         },
     }
@@ -117,8 +119,8 @@ def generate_headers(id_token, client_id):
         "Accept-Language": "en-GB,en-US;q=0.9,en;q=0.8",
         "Connection": "keep-alive",
         "Content-Type": "application/json-patch+json",
-        "Origin": "https://www.costco.ca",
-        "Referer": "https://www.costco.ca/",
+        "Origin": "https://www.costco.com",
+        "Referer": "https://www.costco.com/",
         "Sec-Fetch-Dest": "empty",
         "Sec-Fetch-Mode": "cors",
         "Sec-Fetch-Site": "cross-site",

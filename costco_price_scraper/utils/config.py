@@ -1,6 +1,6 @@
 import configparser
 
-config_path = '/home/jacky/Code/costco_price_scraper/config.ini'
+config_path = '/Users/scott/PycharmProjects/costco_price_scraper/config.ini' # Done: Change
 
 def read_config(section, option):
     config = configparser.ConfigParser()
