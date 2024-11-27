@@ -41,41 +41,49 @@ def scrape_website(url):
     response = requests.get(url, timeout=5)
 
     if response.status_code == 200:
-        soup = BeautifulSoup(response.content, "html.parser")
+        soup = BeautifulSoup(response.content, "html5lib")
 
+        # pattern = re.compile(
+        #    r"(\d+) (.+?) \(\$([\d.]+) INSTANT SAVINGS EXPIRES ON (\d{4}-\d{2}-\d{2})\) \$(\d+\.\d+)"
+        # )
+        # https://regex101.com/r/vXUiI8/1
         pattern = re.compile(
-            r"(\d+) (.+?) \(\$([\d.]+) INSTANT SAVINGS EXPIRES ON (\d{4}-\d{2}-\d{2})\) \$(\d+\.\d+)"
+            r"(.+?) \$(\d+\.\d+) \(exp (\d{1,2}\/\d{1,2}\/\d{1,2})\.? \$(\d+) saved\. Item \#(\d+)\)"
         )
 
         batch_data = []
+        blocks = soup.find_all("ul", class_="wp-block-list")
+        for idx, block in enumerate(blocks):
+            list_items = block.find_all("li", recursive=False)
+            for iidx, item in enumerate(list_items):
+                matches = pattern.findall(item.text)
 
-        for item in soup.find_all("figcaption", class_="wp-caption-text"):
-            matches = pattern.findall(item.text)
+                current_date = datetime.now().date()
 
-            current_date = datetime.now().date()
-
-            # Print extracted data
-            for match in matches:
-                item_id, item_name, savings, expiry_date, sale_price = match
-                # check for valid dates
-                try:
-                    expiry_date_obj = datetime.strptime(expiry_date, "%Y-%m-%d").date()
-                except ValueError:
-                    print(f"Invalid date format: {expiry_date}")
-                    continue
-                # Check if the item is not past its expiry date
-                if expiry_date_obj >= current_date:
-                    batch_data.append(
-                        [item_id, item_name, savings, expiry_date, sale_price]
-                    )
-                    print(f"Item ID: {item_id}")
-                    print(f"Item Name: {item_name}")
-                    print(f"Savings: ${savings}")
-                    print(f"Expiry Date: {expiry_date}")
-                    print(f"Sale Price: ${sale_price}")
-                    print("\n")
-                else:
-                    print(f"Item ID: {item_id} has expired and will not be included.")
+                # Print extracted data
+                for match in matches:
+                    # item_id, item_name, savings, expiry_date, sale_price = match
+                    item_name, sale_price, expiry_date, savings, item_id = match
+                    # check for valid dates
+                    try:
+                        #expiry_date_obj = datetime.strptime(expiry_date, "%Y-%m-%d").date()
+                        expiry_date_obj = datetime.strptime(expiry_date, "%m/%d/%y").date()
+                    except ValueError:
+                        print(f"Invalid date format: {expiry_date}")
+                        continue
+                    # Check if the item is not past its expiry date
+                    if expiry_date_obj >= current_date:
+                        batch_data.append(
+                            [item_id, item_name, savings, expiry_date, sale_price]
+                        )
+                        print(f"Item ID: {item_id}")
+                        print(f"Item Name: {item_name}")
+                        print(f"Savings: ${savings}")
+                        print(f"Expiry Date: {expiry_date}")
+                        print(f"Sale Price: ${sale_price}")
+                        print("\n")
+                    else:
+                        print(f"Item ID: {item_id} has expired and will not be included.")
 
         return batch_data
     else:
@@ -90,10 +98,10 @@ def get_sales_post_urls():
     Returns:
         list: A list of URLs for sales posts.
     """
-    base_url = "https://cocowest.ca"
+    base_url = "https://www.frugalhotspot.com/tag/unadvertised/"
 
     urls_list = []
-    for page_number in range(1, 4):
+    for page_number in range(1, 2):
         # construct the url for each page
         page_url = f"{base_url}/page/{page_number}/"
 
@@ -102,12 +110,13 @@ def get_sales_post_urls():
 
         if response.status_code == 200:
             # Parse HTML content of the page
-            soup = BeautifulSoup(response.content, "html.parser")
+            soup = BeautifulSoup(response.content, "html5lib")
 
-            list_items = soup.find_all("li", class_="g1-collection-item-carmania")
+            #list_items = soup.find_all("li", class_="g1-collection-item-carmania")
+            list_items = soup.find_all("li", class_="list-post pclist-layout")
 
             # Setting threshold date for the past 30 days
-            threshold_date = datetime.now(timezone.utc) - timedelta(days=30)
+            threshold_date = datetime.now(timezone.utc) - timedelta(days=60)
 
             for item in list_items:
                 # Extract the datetime attribute from the time element
@@ -128,7 +137,8 @@ def get_sales_post_urls():
                         )
 
                         if post_date >= threshold_date_aware:
-                            href = item.find("h3", class_="g1-gamma").a["href"]
+                            #href = item.find("h3", class_="g1-gamma").a["href"]
+                            href = item.find("h2", class_="penci-entry-title entry-title grid-title").a["href"]
                             print(f"Post within the last 30 days: {href}")
                             urls_list.append(href)
                 else:

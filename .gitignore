@@ -11,3 +11,7 @@ config.ini
 
 #ignore scraped data
 scraped_data.csv
+
+.venv
+.idea
+__pycache__

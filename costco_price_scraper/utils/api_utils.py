@@ -10,7 +10,7 @@ def call_api(all_items_list):
     Returns:
         dict: A hashmap of sale items.
     """
-    api_url = "http://localhost:5000/check_sale"  # Update with your actual URL
+    api_url = "http://127.0.0.1:5000/check_sale"  # Update with your actual URL
     all_item_ids = [item[1] for item in all_items_list]
     unique_item_ids = list(set(all_item_ids))
     params = {"items": unique_item_ids}

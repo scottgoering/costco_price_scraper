@@ -1,7 +1,16 @@
 from flask import Flask, jsonify, request
 import sqlite3
+from dateutil import parser
 
 app = Flask(__name__)
+
+def date_parse(s):
+    ''' sql udf to convert string to date'''
+    try:
+        t = parser.parse(s, parser.parserinfo(dayfirst=True))
+        return t.strftime('%Y-%m-%d')
+    except:
+        return None
 
 
 @app.route("/check_sale", methods=["GET"])
@@ -11,6 +20,7 @@ def check_sale():
 
     # Connect to the database
     conn = sqlite3.connect("scraped_prices.db")
+    conn.create_function("date_parse", 1, date_parse)
     cursor = conn.cursor()
 
     # Query the database for sale information
