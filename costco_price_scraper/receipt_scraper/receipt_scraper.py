@@ -57,7 +57,10 @@ def initialize_webdriver(retries=3):
             options = uc.ChromeOptions()
             # options.binary_location = chrome_path
             # driver = uc.Chrome(options=options, version_main=122)
-            driver = uc.Chrome()
+            prefs = {"credentials_enable_service": False,
+                     "profile.password_manager_enabled": False}
+            options.add_experimental_option("prefs", prefs)
+            driver = uc.Chrome(options=options)
             return driver
         except Exception as e:
             attempt += 1
@@ -360,7 +363,7 @@ def parse_receipt_json_data(json_data, username):
     return receipt_items
 
 
-def get_screenshots(driver, all_receipt_ids_set):
+def get_screenshots(driver, all_receipt_ids_set, all_receipts=False):
     """
     Processes the 'View Receipt' buttons to capture screenshots.
 
@@ -370,43 +373,68 @@ def get_screenshots(driver, all_receipt_ids_set):
     """
     new_receipts = []
 
-    view_receipt_buttons = driver.find_elements(
-        By.CSS_SELECTOR, 'button[automation-id="ViewInWareHouseReciept"][data-bi-tc^="ui:In"]'
-    )
+    # Reduce the potential options for the timeline to only the first one
+    # Default case
+    # Otherwise, we'll loop through all available time slices
+    timeline_options = driver.find_elements(By.CLASS_NAME, 'css-peekuu')
+    if not all_receipts:
+        timeline_options = [timeline_options[0]]
+    timeline_option_indexes = [idx for idx, opt in enumerate(timeline_options)]
 
-    for index, button in enumerate(view_receipt_buttons, start=1):
-        print(f"Clicking 'View Receipt' button {index}")
-        button.click()
-        time.sleep(2)
-        receipt_id, date_time_str, receipt_path = process_receipt_metadata(
-            driver, all_receipt_ids_set
+    for tl_option_index in timeline_option_indexes:
+        timeline_options = driver.find_elements(By.CLASS_NAME, 'css-peekuu')
+        tl_option = timeline_options[tl_option_index]
+
+        tl_option.click()
+        time.sleep(5)
+        next_page_button = driver.find_elements(By.CSS_SELECTOR, 'button[aria-label="Go to next page"]')
+        view_receipt_buttons = driver.find_elements(
+            By.CSS_SELECTOR, 'button[automation-id="ViewInWareHouseReciept"][data-bi-tc^="ui:In"]'
         )
 
-        if receipt_id is None:
-            # already processed the rest of the receipts
-            close_popup = driver.find_element(
-                By.CSS_SELECTOR, 'button.MuiButtonBase-root[aria-label="Close"]'
+        while len(next_page_button) > 0 or len(view_receipt_buttons) <= 10:
+            next_page_button = driver.find_elements(By.CSS_SELECTOR, 'button[aria-label="Go to next page"]')
+            view_receipt_buttons = driver.find_elements(
+                By.CSS_SELECTOR, 'button[automation-id="ViewInWareHouseReciept"][data-bi-tc^="ui:In"]'
             )
-            close_popup.click()
-            break
-        else:
-            # receipts to add to db
-            receipt_tuple = (receipt_id, date_time_str, receipt_path)
-            new_receipts.append(receipt_tuple)
+            for index, button in enumerate(view_receipt_buttons, start=1):
+                print(f"Clicking 'View Receipt' button {index}")
+                button.click()
+                time.sleep(2)
+                receipt_id, date_time_str, receipt_path = process_receipt_metadata(
+                    driver, all_receipt_ids_set
+                )
 
-        close_popup = driver.find_element(
-            By.CSS_SELECTOR, 'button.MuiButtonBase-root[aria-label="Close"]'
-        )
-        close_popup.click()
-        scroll_script = "window.scrollBy(0, 200);"
-        driver.execute_script(scroll_script)
+                if receipt_id is None:
+                    # already processed the rest of the receipts
+                    close_popup = driver.find_element(
+                        By.CSS_SELECTOR, 'button.MuiButtonBase-root[aria-label="Close"]'
+                    )
+                    close_popup.click()
+                    break
+                else:
+                    # receipts to add to db
+                    receipt_tuple = (receipt_id, date_time_str, receipt_path)
+                    new_receipts.append(receipt_tuple)
+
+                close_popup = driver.find_element(
+                    By.CSS_SELECTOR, 'button.MuiButtonBase-root[aria-label="Close"]'
+                )
+                close_popup.click()
+                scroll_script = "window.scrollBy(0, 200);"
+                driver.execute_script(scroll_script)
+            if len(next_page_button) > 0:
+                next_page_button[0].click()
+                time.sleep(2)
+            else:
+                break
 
     driver.close()
     driver.quit()
     receipts_db.upsert_receipt_data(new_receipts)
 
 
-def run_receipt_scraper_with_api():
+def run_receipt_scraper_with_api(all_receipts=False):
     """
     The main function to execute the Costco Price Scraper.
 
@@ -424,12 +452,15 @@ def run_receipt_scraper_with_api():
     # )
     # screenshot_thread.start()
 
-    get_screenshots(driver, all_receipt_ids_set)
+    get_screenshots(driver, all_receipt_ids_set, all_receipts)
+    username = config.read_username_config()
 
     if recent_receipts_response.status_code == 200:
         parsed_data = receipt_api.parse_transaction_data(
             recent_receipts_response.json()
         )
+    else:
+        parsed_data = None
 
     unprocessed_receipt_data = []
     all_receipt_items_list = []
@@ -453,11 +484,19 @@ def run_receipt_scraper_with_api():
                 print(
                     f"Transaction {transaction['transactionBarcode']} is NOT within 30 days."
                 )
-        username = config.read_username_config()
-        for receipt_json in unprocessed_receipt_data:
-            all_receipt_items_list.extend(parse_receipt_json_data(receipt_json, username))
 
-        receipts_db.upsert_receipt_items_data(all_receipt_items_list)
+    if all_receipts:
+        for receipt_id in all_receipt_ids_set:
+            receipt_response = receipt_api.receipt_details_request(
+                id_token, client_id, receipt_id
+            )
+            print(receipt_response.status_code)
+            # print(receipt_response.json())
+            unprocessed_receipt_data.append(receipt_response.json())
+
+    for receipt_json in unprocessed_receipt_data:
+        all_receipt_items_list.extend(parse_receipt_json_data(receipt_json, username))
+    receipts_db.upsert_receipt_items_data(all_receipt_items_list)
 
     all_items_list = receipts_db.get_all_user_items_not_on_sale(username)
     return all_items_list
@@ -564,3 +603,6 @@ def run_receipt_scraper_with_api():
 #             item["on_sale"] = True
 
 #     return item_list
+# MuiButtonBase-root MuiPaginationItem-root MuiPaginationItem-sizeSmall MuiPaginationItem-text MuiPaginationItem-rounded MuiPaginationItem-textPrimary MuiPaginationItem-previousNext css-10f6srl
+# MuiButtonBase-root MuiPaginationItem-root MuiPaginationItem-sizeSmall MuiPaginationItem-text MuiPaginationItem-rounded MuiPaginationItem-textPrimary MuiPaginationItem-page css-10f6srl
+# MuiButtonBase-root MuiPaginationItem-root MuiPaginationItem-sizeSmall MuiPaginationItem-text MuiPaginationItem-rounded MuiPaginationItem-textPrimary Mui-selected MuiPaginationItem-page css-10f6srl
