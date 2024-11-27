@@ -35,18 +35,19 @@ def get_recent_receipts(id_token, client_id):
 
     headers = generate_headers(id_token, client_id)
 
-    payload = {
-        "query": "query receipts($startDate: String!, $endDate: String!) { receipts(startDate: $startDate, endDate: $endDate) { warehouseName documentType transactionDateTime transactionBarcode warehouseName transactionType total totalItemCount itemArray { itemNumber } tenderArray { tenderTypeCode tenderDescription amountTender } couponArray { upcnumberCoupon } } }",
-        "variables": {
-            "startDate": start_date_str,
-            "endDate": end_date_str,
-            "documentType": "warehouse",
-            "documentSubType": "all",
-            "text": "Last 6 Months",
-        },
+    data = {
+        "query": "query receiptsWithCounts($startDate: String!, $endDate: String!,$documentType:String!,$documentSubType:String!) { receiptsWithCounts(startDate: $startDate, endDate: $endDate,documentType:$documentType,documentSubType:$documentSubType) { inWarehouse gasStation carWash gasAndCarWash receipts{ warehouseName receiptType  documentType transactionDateTime transactionBarcode warehouseName transactionType total  totalItemCount itemArray {itemNumber } tenderArray {tenderTypeCode   tenderDescription   amountTender } couponArray {upcnumberCoupon }    }}  }",
+        "variables":
+            {
+                "startDate": start_date_str,
+                "endDate": end_date_str,
+                "text": "Last 6 Months",
+                "documentType": "all",
+                "documentSubType": "all"
+            }
     }
 
-    response = make_api_request(url, headers, payload)
+    response = make_api_request(url, headers, data)
     return response
 
 
@@ -66,12 +67,16 @@ def receipt_details_request(id_token, client_id, receipt_id):
 
     headers = generate_headers(id_token, client_id)
 
-    payload = {
-        "query": "query receipts($barcode: String!) { receipts(barcode: $barcode) { warehouseName documentType transactionDateTime transactionDate companyNumber warehouseNumber operatorNumber warehouseName warehouseShortName registerNumber transactionNumber transactionType transactionBarcode total warehouseAddress1 warehouseAddress2 warehouseCity warehouseState warehouseCountry warehousePostalCode totalItemCount subTotal taxes total itemArray { itemNumber itemDescription01 frenchItemDescription1 itemDescription02 frenchItemDescription2 itemIdentifier unit amount taxFlag merchantID entryMethod transDepartmentNumber } tenderArray { tenderTypeCode tenderDescription amountTender displayAccountNumber sequenceNumber approvalNumber responseCode transactionID merchantID entryMethod } couponArray { upcnumberCoupon voidflagCoupon refundflagCoupon taxflagCoupon amountCoupon } subTaxes { tax1 tax2 tax3 tax4 aTaxPercent aTaxLegend aTaxAmount bTaxPercent bTaxLegend bTaxAmount cTaxPercent cTaxLegend cTaxAmount dTaxAmount } instantSavings membershipNumber } }",
-        "variables": {"barcode": receipt_id},
+    data = {
+        "query": "query receiptsWithCounts($barcode: String!,$documentType:String!) {    receiptsWithCounts(barcode: $barcode,documentType:$documentType) {receipts{      warehouseName      receiptType       documentType       transactionDateTime       transactionDate       companyNumber        warehouseNumber       operatorNumber        warehouseName        warehouseShortName         registerNumber        transactionNumber        transactionType      transactionBarcode        total       warehouseAddress1       warehouseAddress2       warehouseCity       warehouseState       warehouseCountry       warehousePostalCode      totalItemCount       subTotal       taxes      total       invoiceNumber      sequenceNumber      itemArray {          itemNumber         itemDescription01         frenchItemDescription1         itemDescription02         frenchItemDescription2         itemIdentifier         itemDepartmentNumber        unit         amount         taxFlag         merchantID         entryMethod        transDepartmentNumber        fuelUnitQuantity        fuelGradeCode        fuelUnitQuantity        itemUnitPriceAmount        fuelUomCode        fuelUomDescription        fuelUomDescriptionFr        fuelGradeDescription        fuelGradeDescriptionFr      }        tenderArray {           tenderTypeCode        tenderSubTypeCode        tenderDescription            amountTender            displayAccountNumber           sequenceNumber           approvalNumber           responseCode         tenderTypeName          transactionID            merchantID            entryMethod         tenderAcctTxnNumber           tenderAuthorizationCode           tenderTypeName         tenderTypeNameFr         tenderEntryMethodDescription      }            subTaxes {                tax1                tax2                tax3               tax4               aTaxPercent               aTaxLegend               aTaxAmount          aTaxPrintCode          aTaxPrintCodeFR               aTaxIdentifierCode               bTaxPercent              bTaxLegend               bTaxAmount          bTaxPrintCode          bTaxPrintCodeFR               bTaxIdentifierCode                cTaxPercent               cTaxLegend              cTaxAmount          cTaxIdentifierCode                     dTaxPercent               dTaxLegend               dTaxAmount          dTaxPrintCode          dTaxPrintCodeFR               dTaxIdentifierCode          uTaxLegend          uTaxAmount          uTaxableAmount        }           instantSavings           membershipNumber     }  } }",
+        "variables":
+            {
+                "barcode": receipt_id,
+                "documentType": "warehouse"
+            }
     }
 
-    response = make_api_request(url, headers, payload)
+    response = make_api_request(url, headers, data)
     return response
 
 
@@ -84,8 +89,8 @@ def calculate_recent_dates():
     """
     end_date = datetime.date.today().replace(day=1)
     days_in_month = (
-        end_date.replace(month=end_date.month % 12 + 1, day=1)
-        - datetime.timedelta(days=1)
+            end_date.replace(month=end_date.month % 12 + 1, day=1)
+            - datetime.timedelta(days=1)
     ).day
     end_date = end_date.replace(day=days_in_month)
 
@@ -115,24 +120,23 @@ def generate_headers(id_token, client_id):
     - dict: Request headers.
     """
     headers = {
-        "Accept": "*/*",
-        "Accept-Language": "en-GB,en-US;q=0.9,en;q=0.8",
-        "Connection": "keep-alive",
-        "Content-Type": "application/json-patch+json",
-        "Origin": "https://www.costco.com",
-        "Referer": "https://www.costco.com/",
-        "Sec-Fetch-Dest": "empty",
-        "Sec-Fetch-Mode": "cors",
-        "Sec-Fetch-Site": "cross-site",
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36",
-        "client-identifier": CLIENT_IDENTIFIER,
-        "costco-x-authorization": f"Bearer {id_token}",
-        "costco-x-wcs-clientId": client_id,
-        "costco.env": "ecom",
-        "costco.service": "restOrders",
-        "sec-ch-ua": '"Not A Brand";v="99", "Google Chrome";v="121", "Chromium";v="121"',
-        "sec-ch-ua-mobile": "?0",
-        "sec-ch-ua-platform": '"Windows"',
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:131.0) Gecko/20100101 Firefox/131.0',
+        'Accept': '*/*',
+        'Accept-Language': 'en-US,en;q=0.5',
+        # 'Accept-Encoding': 'gzip, deflate, br, zstd',
+        'costco.service': 'restOrders',
+        'costco.env': 'ecom',
+        'costco-x-authorization': f'Bearer {id_token}',
+        'Content-Type': 'application/json-patch+json',
+        'costco-x-wcs-clientId': client_id,
+        'client-identifier': CLIENT_IDENTIFIER,
+        'Origin': 'https://www.costco.com',
+        'Connection': 'keep-alive',
+        'Referer': 'https://www.costco.com/',
+        'Sec-Fetch-Dest': 'empty',
+        'Sec-Fetch-Mode': 'cors',
+        'Sec-Fetch-Site': 'same-site',
+        'Priority': 'u=0',
     }
     return headers
 
@@ -150,6 +154,7 @@ def make_api_request(url, headers, payload):
     - response: The API response.
     """
     response = requests.post(url, headers=headers, json=payload, timeout=10)
+    print(response.request)
     print(response.status_code)
     print(response.json())
     return response
