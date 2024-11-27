@@ -10,7 +10,7 @@ config.ini
 /receipts/
 
 #ignore scraped data
-scraped_data.csv
+*.csv
 
 .venv
 .idea
