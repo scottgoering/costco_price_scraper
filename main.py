@@ -3,10 +3,12 @@ from costco_price_scraper.receipt_scraper import receipt_scraper as rs
 from costco_price_scraper.receipt_scraper import receipts_db
 from costco_price_scraper.utils import email_sender, email_builder, config
 from costco_price_scraper.utils.api_utils import call_api
+from costco_price_scraper.price_scraper import costco_coupon_scraper as cs
 
 def main():
     ps.run_price_scraper()
-    all_items_list = rs.run_receipt_scraper_with_api()
+    cs.run_price_scraper()
+    all_items_list = rs.run_receipt_scraper_with_api(all_receipts=False)
     sale_item_hashmap = call_api(all_items_list)
     
     receipt_items_list = []
@@ -23,8 +25,10 @@ def main():
     subject, body = email_builder.construct_receipt_email_body_and_subject(receipt_items_list, sale_item_hashmap)
     to_email = config.read_username_config()
     paths = [receipt.get("receipt_path") for receipt in receipts]
-    
-    email_sender.send_email(subject, body, to_email, paths)
+
+    if receipt_items_list: # Only send emails if there are price adjustments found
+        email_sender.send_email(subject, body, to_email, paths)
+
 
 if __name__ == "__main__":
     main()
