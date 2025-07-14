@@ -1,6 +1,9 @@
 {
     "name": "Python Dev Container",
-    "image":"mcr.microsoft.com/devcontainers/python:3",
+    "build": {
+    "dockerfile": "Dockerfile",
+    "context": "."
+      },
     "customizations": {
         "vscode": {
             "extensions": [
@@ -13,6 +16,9 @@
             }
         }
     },
+    "features": {
+    "ghcr.io/devcontainers/features/git:1": {}
+      },
     "postCreateCommand": "uv sync",
     "remoteUser": "vscode"
 }
