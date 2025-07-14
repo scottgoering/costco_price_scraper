@@ -1,0 +1,18 @@
+{
+    "name": "Python Dev Container",
+    "image":"mcr.microsoft.com/devcontainers/python:3",
+    "customizations": {
+        "vscode": {
+            "extensions": [
+                "ms-python.python",
+                "ms-vscode-remote.remote-containers"
+            ],
+            "settings": {
+                "python.defaultInterpreterPath": "/usr/local/bin/python",
+                "python.linting.enabled": true
+            }
+        }
+    },
+    "postCreateCommand": "uv sync",
+    "remoteUser": "vscode"
+}
