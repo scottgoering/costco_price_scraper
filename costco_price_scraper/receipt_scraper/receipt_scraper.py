@@ -327,38 +327,45 @@ def parse_receipt_json_data(json_data, username):
     discount_id_set = set()
     item_ids_to_skip = set()
 
-    receipt = json_data["data"]["receipts"][0]
-    receipt_id = receipt.get("transactionBarcode", "")
-    receipt_type = receipt.get("transactionType", "")
-    receipt_date = receipt.get("transactionDate", "")
+    # receipt = json_data["data"]["receipts"][0]
+    receipt = json_data.get("data", {}).get("receiptsWithCounts", {}).get("receipts", [])
+    if len(receipt) > 0:
+        receipt = receipt[0]
 
-    for item in receipt["itemArray"]:
-        discount_id = check_for_discount_prefix(item.get("itemDescription01", ""))
-        if discount_id is not None:
-            discount_id_set.add(discount_id)
-            item_ids_to_skip.add(item.get("itemNumber", ""))
+    try:
+        receipt_id = receipt.get("transactionBarcode", "")
+        receipt_type = receipt.get("transactionType", "")
+        receipt_date = receipt.get("transactionDate", "")
 
-    for item in receipt["itemArray"]:
-        item_id = item.get("itemNumber", "")
-        if item_id in item_ids_to_skip:
-            continue
-        item_name = item.get("itemDescription01", "")
-        unit = item.get("unit", "")
-        amount = item.get("amount", "")
-        on_sale = item_id in discount_id_set
+        for item in receipt["itemArray"]:
+            discount_id = check_for_discount_prefix(item.get("itemDescription01", ""))
+            if discount_id is not None:
+                discount_id_set.add(discount_id)
+                item_ids_to_skip.add(item.get("itemNumber", ""))
 
-        item_dict = {
-            "item_id": item_id,
-            "item_name": item_name,
-            "amount": amount,
-            "unit": unit,
-            "on_sale": on_sale,
-            "receipt_date": receipt_date,
-            "receipt_id": receipt_id,
-            "receipt_type": receipt_type,
-            "username": username
-        }
-        receipt_items.append(item_dict)
+        for item in receipt["itemArray"]:
+            item_id = item.get("itemNumber", "")
+            if item_id in item_ids_to_skip:
+                continue
+            item_name = item.get("itemDescription01", "")
+            unit = item.get("unit", "")
+            amount = item.get("amount", "")
+            on_sale = item_id in discount_id_set
+
+            item_dict = {
+                "item_id": item_id,
+                "item_name": item_name,
+                "amount": amount,
+                "unit": unit,
+                "on_sale": on_sale,
+                "receipt_date": receipt_date,
+                "receipt_id": receipt_id,
+                "receipt_type": receipt_type,
+                "username": username
+            }
+            receipt_items.append(item_dict)
+    except (AttributeError, KeyError) as e:
+        print(f'Error parsing receipt information: {e}')
 
     return receipt_items
 

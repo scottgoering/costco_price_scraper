@@ -68,11 +68,62 @@ def upsert_items(items):
         conn.create_function("date_parse", 1, date_parse)
         cursor = conn.cursor()
 
-        # Use executemany() for bulk inserts
-        cursor.executemany(
-            """
+        for item in items:
+            cursor.execute("""
             INSERT OR REPLACE INTO items (item_id, item_name, savings, expiry_date, sale_price)
             VALUES (?, ?, ?, date_parse(?), ?)
-        """,
-            items,
+            """,
+            item,)
+
+        # Use executemany() for bulk inserts
+        #cursor.executemany(
+        #    """
+        #    INSERT OR REPLACE INTO items (item_id, item_name, savings, expiry_date, sale_price)
+        #    VALUES (?, ?, ?, date_parse(?), ?)
+        #""",
+        #    items,
+        #)
+
+
+def check_sale(items):
+    """
+    Check sale information based on IDs passed in
+
+    Args:
+        items (list): A list of ids
+    """
+    with sqlite3.connect(DB_FILE) as conn:
+        conn.create_function("date_parse", 1, date_parse)
+        cursor = conn.cursor()
+
+        # Query the database for sale information
+        cursor.execute(
+            """
+            SELECT item_id, item_name, savings, expiry_date, sale_price
+            FROM items
+            WHERE item_id IN ({})
+             AND strftime('%Y-%m-%d', expiry_date) >= strftime('%Y-%m-%d', 'now', 'localtime')
+            """.format(
+                ",".join(map(str, items))
+            )
         )
+
+        # Fetch the results
+        results = cursor.fetchall()
+
+    total_savings = sum(row[2] for row in results)
+
+    # Convert results to a list of dictionaries
+    sale_info = [
+        {
+            "item_id": row[0],
+            "item_name": row[1],
+            "savings": row[2],
+            "expiry_date": row[3],
+            "sale_price": row[4],
+        }
+        for row in results
+    ]
+    refund_info = {"total_savings": total_savings, "sale_info": sale_info}
+
+    return refund_info
