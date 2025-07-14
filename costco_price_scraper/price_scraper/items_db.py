@@ -68,14 +68,21 @@ def upsert_items(items):
         conn.create_function("date_parse", 1, date_parse)
         cursor = conn.cursor()
 
-        # Use executemany() for bulk inserts
-        cursor.executemany(
-            """
+        for item in items:
+            cursor.execute("""
             INSERT OR REPLACE INTO items (item_id, item_name, savings, expiry_date, sale_price)
             VALUES (?, ?, ?, date_parse(?), ?)
-        """,
-            items,
-        )
+            """,
+            item,)
+
+        # Use executemany() for bulk inserts
+        #cursor.executemany(
+        #    """
+        #    INSERT OR REPLACE INTO items (item_id, item_name, savings, expiry_date, sale_price)
+        #    VALUES (?, ?, ?, date_parse(?), ?)
+        #""",
+        #    items,
+        #)
 
 
 def check_sale(items):

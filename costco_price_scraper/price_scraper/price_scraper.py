@@ -250,4 +250,4 @@ def run_price_scraper():
 
     else:
         # Step 7: If the scraping process failed, print an error message
-        print("Scraping failed.")
+        print("No Unadvertised deals available")
