@@ -20,5 +20,5 @@
     "ghcr.io/devcontainers/features/git:1": {}
       },
     "postCreateCommand": "uv sync",
-    "remoteUser": "vscode"
+    "remoteUser": "root"
 }
