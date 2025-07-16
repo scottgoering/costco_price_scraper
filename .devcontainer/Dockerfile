@@ -1,5 +1,5 @@
 FROM ultrafunk/undetected-chromedriver:latest
-COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
+COPY --from=ghcr.io/astral-sh/uv:python3.11-alpine /uv /uvx /bin/
 
 ENV UV_COMPILE_BYTECODE=1
 ENV UV_NO_CACHE=1
